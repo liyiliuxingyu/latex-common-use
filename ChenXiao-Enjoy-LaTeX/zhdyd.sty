@@ -1,0 +1,92 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%     导引线
+%%%%%%%%%%%%%%%%%%%%%%%%
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{zhdyd}
+\RequirePackage{tikz}
+
+\RequirePackage{xpatch}
+\usetikzlibrary{tikzmark,decorations.markings}
+\tikzset{zhuangding/.style={
+		decoration={markings,
+			mark=between positions 0 and 1 step 4.5pt with
+			{\node[]{\large$\cdot$};},
+		},%postaction={decorate}
+	}
+}
+%%%自定义公式导引线
+%%%自定义公式导引线
+\makeatletter
+\def\maketag@@@#1{\hbox{%
+		\m@th\normalfont
+		\ifmeasuring@
+		\expandafter\@gobble
+		\else
+		\expandafter\@firstofone
+		\fi
+		{%
+			\PackageWarning{dot}{maketag: \the\value{eqn@dotfill}}%
+			\tikzmark{\the\c@eqn@dotfill-1}%
+			\iftikzmark{\the\c@eqn@dotfill}{%
+				\tikz[remember picture, overlay]
+				\draw [decorate,zhuangding] ([xshift=-5.7pt,yshift=2.7pt]pic cs:\the\c@eqn@dotfill-1) -- ([xshift=4pt,yshift=2.7pt]pic cs:\the\c@eqn@dotfill);%
+			}{}%
+		}%
+		#1}}
+
+\newcounter{eqn@dotfill}
+\newcommand\markDotfill{%
+	\ifmeasuring@
+	\expandafter\@gobble
+	\else
+	\expandafter\@firstofone
+	\fi
+	{%
+		\addtocounter{eqn@dotfill}{3}%
+		% \PackageWarning{dot}{markdotfill: \the\value{eqn@dotfill}}%
+		\tikzmark{\the\c@eqn@dotfill}%
+	}%
+}
+
+% step \c@eqn@dotfill per equation line
+% TODO: check every occurrence where counter "equation" is modified (a possible linebreak)
+\xpatchcmd\incr@eqnum
+{\refstepcounter{equation}}
+{\refstepcounter{equation}\stepcounter{eqn@dotfill}}
+{}{\fail}
+
+\def\maybe@execute#1{%
+	\ifdefined#1%
+	\expandafter#1
+	\fi
+}
+
+\maybe@execute\MHInternalSyntaxOn
+\xpatchcmd\nonumber
+{\addtocounter{equation}\m@ne}
+{\addtocounter{equation}\m@ne\stepcounter{eqn@dotfill}}
+{}{\fail}
+\maybe@execute\MHInternalSyntaxOff
+
+%\xpatchcmd\nonumber
+%  {\addtocounter{equation}\m@ne}
+%  {\addtocounter{equation}\m@ne\stepcounter{eqn@dotfill}}
+%  {}{\fail}
+
+\xpatchcmd\subequations
+{\refstepcounter{equation}}
+{\refstepcounter{equation}\stepcounter{eqn@dotfill}}
+{}{\fail}
+\makeatother
+
+
+%%%正文导引线重新设置更加美观
+\def\mydots{%
+	\leavevmode\hspace{2pt}\xleaders\hbox to 4.5pt{\hfil{\large$\cdot$}\hfil}\hfill\kern3.5pt}
+
+%%%正文导引线重新设置更加美观
+\def\mydots{%
+	\leavevmode\hspace{2pt}\xleaders\hbox to 4.5pt{\hfil{\large$\cdot$}\hfil}\hfill\kern3.5pt}
+
+\newcommand{\zhdots}[1]{\markDotfill\tag*{\text{#1}}}
+\endinput

@@ -1,0 +1,333 @@
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesClass{zhbianzhu}
+
+\RequirePackage{everypage}
+
+
+
+
+\newcounter{abspage}
+\AddEverypageHook{\marginfillpage}
+
+
+% user modifiable formatting
+\newcommand{\marginfillstyle}{\raggedright\normalsize\normalfont\hspace{0pt}}
+
+\makeatletter
+\newcount\MF@index% global variables
+\newcount\MF@total
+\newlength{\MF@x}% marginpar offset
+\newlength{\MF@y}% pagehook cursor location
+\newlength{\MF@top}% marginpar area
+\newlength{\MF@bottom}
+\newlength{\MF@width}% \marginparwidth might get clobbered
+\newlength{\MF@push}% \marginparpush might get clobbered
+\newcount\MF@min% needed for nested loops
+\newcount\MF@max
+\newlength{\MF@adjust}
+\newif\ifMF@repeat
+\newif\ifMF@main
+
+\newcommand{\marginfill}[1]% #1 = text for margin note
+{\pdfsavepos
+  \protected@write\@auxout{\let\theabspage=\relax}{\string\newmarginfill{\theabspage}%
+    {\noexpand\number\pdflastypos}{#1}}%
+}%
+
+\newcommand{\newmarginfill}[3]% #1 = abspage, #2 = location, #3 = text
+{\global\advance\MF@total by \@ne
+  \expandafter\gdef\csname MF@page\the\MF@total\endcsname{#1}%
+  \expandafter\gdef\csname MF@location\the\MF@total\endcsname{#2}%
+  \expandafter\gdef\csname MF@note\the\MF@total\endcsname{#3}%
+}%
+
+\newcommand{\marginfillpage}% cursor 1in from top left corner
+{\stepcounter{abspage}%
+\ifodd\c@page
+  \setlength{\MF@x}{\oddsidemargin}%
+  \addtolength{\MF@x}{\textwidth}%
+  \addtolength{\MF@x}{\marginparsep}%
+\else
+  \setlength{\MF@x}{\evensidemargin}%
+  \addtolength{\MF@x}{-\marginparsep}%
+  \addtolength{\MF@x}{-\marginparwidth}%
+\fi
+\setlength{\MF@y}{\paperheight}%
+\addtolength{\MF@y}{-1in}%
+\setlength{\MF@top}{\MF@y}%
+\addtolength{\MF@top}{-\topmargin}%
+\addtolength{\MF@top}{-\headheight}%
+\addtolength{\MF@top}{-\headsep}%
+\setlength{\MF@bottom}{\MF@top}%
+\addtolength{\MF@bottom}{-\textheight}%
+\setlength{\MF@width}{\marginparwidth}%
+\setlength{\MF@push}{\marginparpush}%
+% This algorithm overlays a lot of dimen registers, depending on how many notes are on the page.
+% These registers will be restored by the \endgroup, but many will not be available until then.
+% The \MF@...  dimens defined above should be safe.
+\begingroup
+\countdef\index=1
+\index=0
+\MF@repeattrue
+\loop% locate all notes on this page
+  \ifnum\MF@index<\MF@total
+    \global\advance\MF@index by \@ne
+    \edef\temp{\the\MF@index}%
+    \@ifundefined{MF@page\temp}{}{%
+    \ifnum\value{abspage}=\csname MF@page\temp\endcsname\relax
+      \dimendef\yloc=\index
+      \yloc=\csname MF@location\temp\endcsname sp\relax
+      \savebox{\index}{\parbox[c]{\MF@width}%
+        {\marginfillstyle \csname MF@note\temp\endcsname}}%
+      \advance\index by \@ne
+    \else
+      \MF@repeatfalse
+      \global\advance\MF@index by \m@ne
+    \fi}%
+  \else\MF@repeatfalse
+  \fi
+\ifMF@repeat \repeat
+% are there any notes this page?
+\ifnum\index>0 \MF@process\fi
+\endgroup}
+
+%***** moduals used by \marginfillpage *****
+
+\newcommand{\MF@process}%
+{\countdef\total=2
+\countdef\min=3
+\countdef\max=4
+\total=\index
+%create additional local length variables
+\dimendef\tempdima=\index
+\advance\index by \@ne
+\dimendef\tempdimb=\index
+\advance\index by \@ne
+\dimendef\tempdimc=\index
+% resolve overlaps
+\MF@freespace{\tempdimb}%
+\ifdim\tempdimb<1pt \MF@cram{\tempdimb}%
+\else \MF@findsolution
+\fi
+% output notes to page
+\index=0
+\loop
+  \dimendef\yloc=\index
+  \MF@adjust=\yloc% in case \rlap or \raisebox clobbers \yloc
+  \advance\MF@adjust by -\MF@y
+  \rlap{\hspace{\MF@x}\raisebox{\MF@adjust}[0pt][0pt]{\usebox{\index}}}%
+  \advance\index by \@ne
+\ifnum\index<\total \repeat}
+
+\newcommand{\MF@freespace}[1]% #1 = dimen to return total free space
+{\let\freespace=#1%
+\freespace=\MF@top
+\advance \freespace by -\MF@bottom
+\index=0
+\loop% check for no solution
+  \settoheight{\tempdima}{\usebox{\index}}%
+  \advance\freespace by -\tempdima
+  \settodepth{\tempdima}{\usebox{\index}}%
+  \advance\freespace by -\tempdima
+  \advance\freespace by -\MF@push
+  \advance\index by \@ne
+\ifnum\index<\total\relax \repeat
+\advance\freespace by \MF@push}
+
+\newcommand{\MF@cram}[1]% #1 = free space
+{\let\top=#1%
+\top=-0.5\top% center excess
+\advance\top by \MF@top
+\index=0
+\loop% overlap top and bottom
+  \settoheight{\tempdima}{\usebox{\index}}%
+  \advance\top by -\tempdima
+  \dimendef\yloc=\index
+  \yloc=\top
+  \settodepth{\tempdima}{\usebox{\index}}%
+  \advance\top by -\tempdima
+  \advance\top by -\MF@push
+  \advance\index by \@ne
+\ifnum\index<\total\relax \repeat}
+
+\newcommand{\MF@findsolution}% main loop
+{\min=0% start of middle
+\max=\total% end of middle+1
+\loop
+  \MF@mainfalse
+  \MF@addtotop
+  \MF@addtobottom
+  \ifMF@main\relax\else% wait until top and bottom done
+    \MF@min=\min
+    \MF@max=\max
+    \advance\MF@max by \m@ne
+    \ifnum\MF@min<\MF@max \MF@locate\fi% find overlapping notes in middle
+    \ifnum\MF@min<\MF@max
+      \MF@maintrue
+      \MF@apply% cannot use nested loop
+      \ifnum\MF@min<\MF@max \MF@apply\fi
+      \ifnum\MF@min<\MF@max \MF@apply\fi
+      \ifnum\MF@min<\MF@max \MF@apply\fi
+      \ifnum\MF@min<\MF@max \MF@apply\fi
+      \ifnum\MF@min<\MF@max \MF@apply\fi
+      \ifnum\MF@min<\MF@max
+        \errormessage{Exceeded \string\marginfill algorithm capacity.}
+      \fi
+      \MF@apply
+    \fi
+  \fi
+\ifMF@main \repeat}
+
+\newcommand{\MF@addtotop}% resets \min and \ifMF@main
+{\let\top=\tempdimb
+\ifnum\min=0 \top=\MF@top
+\else
+  \index=\min
+  \advance\index by \m@ne
+  \dimendef\yloc=\index
+  \top=\yloc
+  \settodepth{\tempdima}{\usebox{\index}}%
+  \advance\top by -\tempdima
+  \advance\top by -\MF@push
+\fi
+\settoheight{\tempdima}{\usebox{\min}}%
+\advance\top by -\tempdima
+\dimendef\yloc=\min
+\ifdim\top<\yloc
+  \yloc=\top
+  \advance\min by \@ne
+  \MF@maintrue
+\fi}
+
+\newcommand{\MF@addtobottom}% resets \max and \ifMF@main
+{\let\bottom=\tempdimb
+\ifnum\max=\total \bottom=\MF@bottom
+\else
+  \dimendef\yloc=\max
+  \bottom=\yloc
+  \settoheight{\tempdima}{\usebox{\max}}%
+  \advance\bottom by \tempdima
+  \advance\bottom by \MF@push
+\fi
+\index=\max
+\advance\index by \m@ne
+\settodepth{\tempdima}{\usebox{\index}}%
+\advance\bottom by \tempdima
+\dimendef\yloc=\index
+\ifdim\bottom>\yloc
+  \yloc=\bottom
+  \max=\index
+  \MF@maintrue
+\fi}
+
+\newcommand{\MF@locate}% returns \MF@min, \MF@max and \MF@adjust
+{\begingroup% needed for nested loop
+\let\top=\tempdimb
+\let\test=\tempdimc
+\let\size=\MF@adjust
+\dimendef\yloc=\min
+\top=\yloc
+\settodepth{\tempdima}{\usebox{\min}}%
+\advance\top by -\tempdima
+\advance\top by -\MF@push
+%
+\size=0pt
+\index=\min
+\loop% find largest overlap
+  \advance\index by \@ne
+  \settoheight{\tempdima}{\usebox{\index}}%
+  \advance \top by -\tempdima
+  \dimendef\yloc=\index
+  \test=\yloc
+  \advance\test by -\top
+  \ifdim\test>\size \size=\test
+    \MF@min=\index
+  \fi
+  \top=\yloc
+  \settodepth{\tempdima}{\usebox{\index}}%
+  \advance\top by -\tempdima
+  \advance\top by -\MF@push
+\ifnum\index<\MF@max \repeat% \MF@max = \max-1
+\MF@max=\MF@min
+\ifdim\size>1pt
+  \advance\MF@min by \m@ne
+  \MF@expand% find all contiguous overlaps
+  \MF@average% returns \MF@adjust
+\fi
+\global\MF@min=\MF@min
+\global\MF@max=\MF@max
+\global\MF@adjust=\MF@adjust
+\endgroup}
+
+\newcommand{\MF@expand}% locate all contiguous margin notes
+{\let\test=\tempdimb
+\dimendef\yloc=\MF@min
+\test=\yloc
+\advance\test by 0.5\size% add correction
+\loop
+  \MF@repeatfalse
+  \ifnum\MF@min > \min
+    \settoheight{\tempdima}{\usebox{\MF@min}}%
+    \advance\test by \tempdima
+    \advance\test by \MF@push
+    \advance\MF@min by \m@ne
+    \settodepth{\tempdima}{\usebox{\MF@min}}%
+    \advance\test by \tempdima
+    \dimendef\yloc=\MF@min
+    \ifdim\yloc>\test \advance\MF@min by \@ne
+    \else\MF@repeattrue
+    \fi
+  \fi
+\ifMF@repeat \repeat
+%
+\dimendef\yloc=\MF@max
+\test=\yloc
+\advance\test by -0.5\size% add correction
+\loop
+  \MF@repeatfalse
+  \ifnum\MF@max>\max\relax\else
+    \settodepth{\tempdima}{\usebox{\MF@max}}%
+    \advance\test by -\tempdima
+    \advance\test by -\MF@push
+    \advance\MF@max by \@ne
+    \settoheight{\tempdima}{\usebox{\MF@max}}%
+    \advance\test by -\tempdima
+    \dimendef\yloc=\MF@max
+    \ifdim\yloc<\test \advance\MF@max by \m@ne
+    \else\MF@repeattrue
+    \fi
+  \fi
+\ifMF@repeat \repeat}
+
+\newcommand{\MF@average}% returns \MF@adjust
+{\let\offset=\tempdimb
+\offset=0pt
+\MF@adjust=0pt
+\index=\MF@min
+\loop
+  \settoheight{\tempdima}{\usebox{\index}}%
+  \advance\offset by \tempdima
+  \advance\MF@adjust by \offset
+  \dimendef\yloc=\index
+  \advance\MF@adjust by \yloc
+  \settodepth{\tempdima}{\usebox{\index}}%
+  \advance\offset by \tempdima
+  \advance\offset by \MF@push
+  \advance\index by \@ne
+\ifnum\index>\MF@max\relax\else \repeat
+\advance\index by -\MF@min
+\divide\MF@adjust by \index}
+
+\newcommand{\MF@apply}% corrects one margin note at a time
+{\settoheight{\tempdima}{\usebox{\MF@min}}%
+\advance\MF@adjust by -\tempdima
+\dimendef\yloc=\MF@min
+\yloc=\MF@adjust
+\settodepth{\tempdima}{\usebox{\MF@min}}%
+\advance\MF@adjust by -\tempdima
+\advance\MF@adjust by -\MF@push
+\advance\MF@min by \@ne}
+\makeatother
+
+\endinput%%%
