@@ -1,7 +1,8 @@
-\ProvidesPackage{zhfh}
+\ProvidesPackage{zwfh}
 \usepackage{tikz,amsmath,xcolor,ifthen}
 %\usepackage{tikz}
 \usetikzlibrary{tikzmark}
+
 %%%自定义公式导引线
 \makeatletter
 \def\maketag@@@#1{\hbox{%
@@ -181,13 +182,8 @@
 	{\qs@ii{#1}}{\qs@i{#1}}
 }
 
-
-
-
-
-
-
-
-
+%% 自定义圆弧符号
+\DeclareSymbolFont{ugmL}{OMX}{mdugm}{m}{n}
+\DeclareMathAccent{\yhu}{\mathord}{ugmL}{"F3}
 
 \endinput
